@@ -734,33 +734,41 @@
             getWeatherData(defaultLat, defaultLon);
         }
 
-        // 2. 通过经纬度反查城市名称（使用免费的 OpenStreetMap Nominatim 接口）
+        // 2. 通过经纬度反查城市名称（使用高德地图 Web 服务 API）
         async function getCityName(lat, lon) {
             try {
-                // 添加 User-Agent，Nominatim 接口要求必须有 User-Agent 否则可能被拒绝
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`, {
-                    headers: { 
-                        'Accept-Language': 'zh-CN',
-                    }
-                });
+                // 使用用户提供的高德 API Key
+                const amapKey = 'cf1fe83de2b57df9a2cbb88f7b517450';
+                // 高德逆地理编码接口要求经度在前，纬度在后
+                const res = await fetch(`https://restapi.amap.com/v3/geocode/regeo?key=${amapKey}&location=${lon},${lat}`);
                 
                 if (!res.ok) {
                     throw new Error(`HTTP error! status: ${res.status}`);
                 }
                 
                 const data = await res.json();
-                if (data && data.address) {
-                    // 优先取 city，没有取 town 或 county
-                    const city = data.address.city || data.address.town || data.address.county || "未知城市";
-                    const district = data.address.suburb || data.address.district || "";
-                    document.getElementById('loc-text').innerText = district ? `${city} ${district}` : city;
+                if (data.status === '1' && data.regeocode && data.regeocode.addressComponent) {
+                    const addressComponent = data.regeocode.addressComponent;
+                    // 优先取市，如果是直辖市，city 可能是空数组，此时取 province
+                    let city = addressComponent.city;
+                    if (Array.isArray(city) && city.length === 0) {
+                        city = addressComponent.province;
+                    }
+                    const district = addressComponent.district;
+                    
+                    // 如果区和市一样，只显示市
+                    if (district && typeof district === 'string' && district !== city) {
+                        document.getElementById('loc-text').innerText = `${city} ${district}`;
+                    } else {
+                        document.getElementById('loc-text').innerText = city;
+                    }
                 } else {
                     document.getElementById('loc-text').innerText = "未知位置";
                 }
             } catch (e) {
                 console.error("反查城市失败", e);
                 // 失败时也给个默认文本，避免一直显示"定位中"
-                document.getElementById('loc-text').innerText = "未知位置";
+                document.getElementById('loc-text').innerText = "位置解析失败";
             }
         }
 
