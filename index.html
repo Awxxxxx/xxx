@@ -29,6 +29,7 @@
             z-index: 1;
             transition: background 2s ease;
             overflow: hidden;
+            perspective: 1000px;
         }
         /* 闪电层 */
         #lightning-layer {
@@ -41,6 +42,7 @@
             opacity: 0;
             z-index: 2;
             pointer-events: none;
+            mix-blend-mode: overlay;
         }
 
         /* 天气元素动画 */
@@ -48,41 +50,126 @@
             position: absolute;
             top: 15%;
             left: 15%;
-            width: 100px;
-            height: 100px;
-            background: #FFD700;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle at 50% 50%, #fff9e6, #ffdb58, #ff8c00);
             border-radius: 50%;
-            box-shadow: 0 0 60px #FFD700, 0 0 100px #FF8C00;
-            animation: pulse 4s infinite alternate;
+            box-shadow: 0 0 60px #FFD700, 0 0 150px #FF8C00, 0 0 200px rgba(255, 140, 0, 0.5);
+            animation: sunPulse 4s infinite alternate;
         }
-        .sun::after {
-            content: '';
+        .sun-ray {
             position: absolute;
-            top: -20px; left: -20px; right: -20px; bottom: -20px;
-            background: rgba(255, 215, 0, 0.2);
+            top: 50%; left: 50%;
+            width: 200vw; height: 200vw;
+            background: conic-gradient(from 0deg, rgba(255,255,255,0.1) 0deg, transparent 10deg, rgba(255,255,255,0.1) 20deg, transparent 30deg, rgba(255,255,255,0.1) 40deg, transparent 50deg, rgba(255,255,255,0.1) 60deg, transparent 70deg);
+            transform-origin: center center;
+            transform: translate(-50%, -50%);
+            animation: rotateRays 60s linear infinite;
+            pointer-events: none;
+        }
+        .lens-flare {
+            position: absolute;
             border-radius: 50%;
-            animation: pulse 2s infinite alternate;
+            background: rgba(255, 255, 255, 0.2);
+            filter: blur(5px);
+            mix-blend-mode: screen;
+            animation: flareMove 10s infinite alternate;
         }
         .moon {
             position: absolute;
             top: 15%;
             left: 15%;
-            width: 80px;
-            height: 80px;
-            background: #F4F6F0;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle at 30% 30%, #ffffff, #e6e6e6, #b3b3b3);
             border-radius: 50%;
-            box-shadow: 0 0 40px rgba(255,255,255,0.8);
+            box-shadow: 0 0 60px rgba(255,255,255,0.8), inset -10px -10px 20px rgba(0,0,0,0.2);
+        }
+        .crater {
+            position: absolute;
+            background: rgba(0,0,0,0.1);
+            border-radius: 50%;
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2);
         }
         .star {
             position: absolute;
             background: #ffffff;
             border-radius: 50%;
+            box-shadow: 0 0 10px #ffffff;
+        }
+        .shooting-star {
+            position: absolute;
+            width: 100px; height: 2px;
+            background: linear-gradient(90deg, rgba(255,255,255,1), rgba(255,255,255,0));
+            transform: rotate(-45deg);
+            animation: shootingStarAnim 4s linear infinite;
+            opacity: 0;
         }
         .cloud {
             position: absolute;
-            background: rgba(255, 255, 255, 0.8);
+            background: #ffffff;
             border-radius: 50px;
             filter: blur(8px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .cloud::before, .cloud::after {
+            content: ''; position: absolute; background: inherit; border-radius: 50%;
+        }
+        .cloud::before { width: 60%; height: 120%; top: -50%; left: 10%; }
+        .cloud::after { width: 50%; height: 100%; top: -30%; right: 10%; }
+        .dark-cloud {
+            background: #4a5568;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        .rain-drop {
+            position: absolute;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.8));
+            width: 2px;
+            border-radius: 50%;
+            animation: rainFall linear infinite;
+        }
+        .rain-splash {
+            position: absolute;
+            bottom: 0;
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: splashAnim 0.3s ease-out infinite;
+        }
+        
+        .snowflake {
+            position: absolute;
+            background: #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 5px #ffffff;
+            animation: snowFall linear infinite, snowSway ease-in-out infinite alternate;
+        }
+        
+        .fog-layer {
+            position: absolute;
+            width: 200vw; height: 100vh;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 60%);
+            opacity: 0.5;
+            animation: fogMove linear infinite alternate;
+            mix-blend-mode: screen;
+            filter: blur(30px);
+            pointer-events: none;
+        }
+        
+        .wind-streak {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+            animation: windMove linear infinite;
+        }
+        .leaf {
+            position: absolute;
+            width: 12px; height: 12px;
+            background: #d4a373;
+            border-radius: 50% 0 50% 0;
+            animation: leafBlow linear infinite, leafSpin linear infinite;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         /* ================= Main UI Layout ================= */
@@ -362,22 +449,75 @@
         }
 
         /* ================= Keyframes ================= */
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            100% { transform: scale(1.1); opacity: 1; }
+        @keyframes sunPulse {
+            0% { transform: scale(1); box-shadow: 0 0 60px #FFD700, 0 0 150px #FF8C00, 0 0 200px rgba(255, 140, 0, 0.5); }
+            100% { transform: scale(1.05); box-shadow: 0 0 80px #FFD700, 0 0 180px #FF8C00, 0 0 250px rgba(255, 140, 0, 0.6); }
+        }
+        @keyframes rotateRays {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes flareMove {
+            0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+            100% { transform: translate(50px, 50px) scale(1.2); opacity: 0.8; }
         }
         @keyframes float {
             0% { transform: translateX(-150px); }
             100% { transform: translateX(100vw); }
         }
-        @keyframes fall {
-            0% { transform: translateY(-10vh); opacity: 1; }
-            100% { transform: translateY(110vh); opacity: 0; }
+        @keyframes floatSlow {
+            0% { transform: translateX(-300px); }
+            100% { transform: translateX(100vw); }
+        }
+        @keyframes rainFall {
+            0% { transform: translateY(-10vh) translateX(0); opacity: 1; }
+            100% { transform: translateY(110vh) translateX(-15vh); opacity: 0; }
+        }
+        @keyframes splashAnim {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+        @keyframes snowFall {
+            0% { top: -10vh; }
+            100% { top: 110vh; }
+        }
+        @keyframes snowSway {
+            0% { transform: translateX(-30px) rotate(0deg); }
+            100% { transform: translateX(30px) rotate(360deg); }
+        }
+        @keyframes shootingStarAnim {
+            0% { transform: translateX(120vw) translateY(-20vh) rotate(-45deg); opacity: 1; }
+            5% { transform: translateX(-20vw) translateY(120vh) rotate(-45deg); opacity: 0; }
+            100% { transform: translateX(-20vw) translateY(120vh) rotate(-45deg); opacity: 0; }
+        }
+        @keyframes fogMove {
+            0% { transform: translateX(-10vw) translateY(-5vh); }
+            100% { transform: translateX(10vw) translateY(5vh); }
+        }
+        @keyframes windMove {
+            0% { transform: translateX(100vw); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateX(-50vw); opacity: 0; }
+        }
+        @keyframes leafBlow {
+            0% { transform: translateX(110vw) translateY(-10vh); }
+            100% { transform: translateX(-20vw) translateY(80vh); }
+        }
+        @keyframes leafSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(720deg); }
         }
         @keyframes flash {
             0%, 95%, 100% { opacity: 0; }
-            96%, 98% { opacity: 0.8; }
+            96%, 98% { opacity: 0.9; background: #fff; }
             97% { opacity: 0; }
+        }
+        @keyframes intenseFlash {
+            0%, 90%, 100% { opacity: 0; }
+            91%, 93%, 95% { opacity: 0.8; background: #e0e7ff; }
+            92%, 94% { opacity: 0; }
+            96% { opacity: 1; background: #ffffff; }
         }
         @keyframes flyAway {
             0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
@@ -735,86 +875,182 @@
             
             // 判断时间段 (中午/白天、傍晚、深夜)
             if (hour >= 6 && hour < 17) {
-                // 白天 (清晨到下午)
-                bgGradient = "linear-gradient(135deg, #4A90E2, #87CEEB)";
+                bgGradient = "linear-gradient(135deg, #4A90E2, #87CEEB, #b0e0e6)";
             } else if (hour >= 17 && hour < 19) {
-                // 傍晚 (黄昏)
-                bgGradient = "linear-gradient(135deg, #FF7E5F, #FEB47B)";
+                bgGradient = "linear-gradient(135deg, #FF7E5F, #FEB47B, #ffc3a0)";
             } else {
-                // 深夜
-                bgGradient = "linear-gradient(135deg, #0f2027, #203a43)";
+                bgGradient = "linear-gradient(135deg, #0f2027, #203a43, #2c5364)";
                 isNight = true;
             }
+            
+            // 针对特定天气的背景色调整
+            if (condition.includes("CLOUD") || condition.includes("OVERCAST")) {
+                if (!isNight) bgGradient = "linear-gradient(135deg, #606c88, #3f4c6b, #7f8c8d)";
+            }
+            if (condition.includes("RAIN") || condition.includes("DRIZZLE")) {
+                if (!isNight) bgGradient = "linear-gradient(135deg, #4b6cb7, #182848, #2c3e50)";
+            }
+            if (condition.includes("THUNDERSTORM") || condition.includes("STORM")) {
+                bgGradient = "linear-gradient(135deg, #141e30, #243b55, #000000)";
+            }
+            if (condition.includes("FOG") || condition.includes("HAZE")) {
+                bgGradient = isNight ? "linear-gradient(135deg, #2c3e50, #3498db)" : "linear-gradient(135deg, #bdc3c7, #2c3e50)";
+            }
+            if (condition.includes("WINDY") || condition.includes("DUST")) {
+                bgGradient = "linear-gradient(135deg, #b79891, #94716b, #d7c2a9)";
+            }
+            
             bgLayer.style.background = bgGradient;
             
-            // 渲染具体天气特效
+            let html = "";
+            
+            // ========== 1. 晴天/夜空 ==========
             if (condition.includes("CLEAR")) {
-                // 晴天
                 if (!isNight) {
-                    bgLayer.innerHTML += `<div class="sun"></div>`;
+                    // 太阳、光晕、光线
+                    html += `<div class="sun"><div class="sun-ray"></div></div>`;
+                    for(let i=0; i<3; i++) {
+                        const size = 50 + Math.random()*100;
+                        const top = 10 + Math.random()*20;
+                        const left = 10 + Math.random()*20;
+                        const delay = Math.random()*5;
+                        html += `<div class="lens-flare" style="width:${size}px; height:${size}px; top:${top}%; left:${left}%; animation-delay:-${delay}s;"></div>`;
+                    }
                 } else {
-                    bgLayer.innerHTML += `<div class="moon"></div>`;
-                    // 添加星星
-                    for(let i = 0; i < 40; i++) {
+                    // 月亮与陨石坑
+                    html += `<div class="moon">
+                        <div class="crater" style="width:20px; height:20px; top:20%; left:20%;"></div>
+                        <div class="crater" style="width:15px; height:15px; top:50%; left:60%;"></div>
+                        <div class="crater" style="width:30px; height:30px; top:60%; left:20%;"></div>
+                    </div>`;
+                    // 繁星点点
+                    for(let i = 0; i < 80; i++) {
                         const x = Math.random() * 100;
-                        const y = Math.random() * 60; // 星星主要在上半部分
-                        const delay = Math.random() * 3;
+                        const y = Math.random() * 100;
+                        const delay = Math.random() * 5;
                         const size = Math.random() * 2 + 1;
-                        bgLayer.innerHTML += `<div class="star" style="top:${y}%; left:${x}%; width:${size}px; height:${size}px; animation: pulse 2s infinite alternate ${delay}s;"></div>`;
+                        const duration = 2 + Math.random() * 3;
+                        const opacity = 0.3 + Math.random() * 0.7;
+                        html += `<div class="star" style="top:${y}%; left:${x}%; width:${size}px; height:${size}px; opacity:${opacity}; animation: pulse ${duration}s infinite alternate ${delay}s;"></div>`;
+                    }
+                    // 流星
+                    for(let i = 0; i < 3; i++) {
+                        const delay = Math.random() * 15;
+                        const top = Math.random() * 50;
+                        html += `<div class="shooting-star" style="top:${top}%; animation-delay:${delay}s;"></div>`;
                     }
                 }
-            } 
-            else if (condition.includes("CLOUD")) {
-                // 多云 / 阴天
-                // 如果是阴天，背景稍微变灰暗
-                if (condition === "CLOUDY" && !isNight) {
-                    bgLayer.style.background = "linear-gradient(135deg, #606c88, #3f4c6b)";
-                }
-                for(let i = 0; i < 6; i++) {
-                    const top = 5 + Math.random() * 30;
-                    const delay = Math.random() * -20;
-                    const duration = 20 + Math.random() * 15;
-                    const scale = 0.6 + Math.random() * 0.8;
-                    const opacity = isNight ? 0.2 : 0.6;
-                    bgLayer.innerHTML += `
-                        <div class="cloud" style="top:${top}%; left:-30%; width:150px; height:50px; background:rgba(255,255,255,${opacity}); transform:scale(${scale}); animation: float ${duration}s linear infinite ${delay}s;"></div>
-                    `;
+            }
+            
+            // ========== 2. 云 (多云/阴天/风) ==========
+            if (condition.includes("CLOUD") || condition.includes("OVERCAST") || condition.includes("CLEAR") || condition.includes("WINDY")) {
+                const isOvercast = condition.includes("OVERCAST") || condition.includes("CLOUDY") || condition.includes("CLOUDS");
+                const cloudCount = isOvercast ? 15 : (condition.includes("CLEAR") ? 3 : 8);
+                const cloudClass = (isOvercast || condition.includes("RAIN") || condition.includes("STORM")) ? "cloud dark-cloud" : "cloud";
+                
+                for(let i = 0; i < cloudCount; i++) {
+                    const top = -5 + Math.random() * 40;
+                    const delay = Math.random() * -60;
+                    // 风大则云动得快
+                    const duration = condition.includes("WINDY") ? (10 + Math.random() * 10) : (30 + Math.random() * 40);
+                    const scale = 0.5 + Math.random() * 1.5;
+                    const opacity = isNight ? 0.15 : (isOvercast ? 0.7 : 0.4);
+                    const zIndex = Math.floor(Math.random() * 3); // 多层深度
+                    
+                    html += `<div class="${cloudClass}" style="top:${top}%; left:-30%; width:200px; height:60px; background:rgba(255,255,255,${opacity}); transform:scale(${scale}); animation: floatSlow ${duration}s linear infinite ${delay}s; z-index:${zIndex};"></div>`;
                 }
             }
             
-            if (condition.includes("RAIN") || condition.includes("DRIZZLE")) {
-                // 雨天 (涵盖所有雨)
-                if (!isNight) {
-                    bgLayer.style.background = "linear-gradient(135deg, #4b6cb7, #182848)";
+            // ========== 3. 雨/雷阵雨 ==========
+            if (condition.includes("RAIN") || condition.includes("DRIZZLE") || condition.includes("STORM")) {
+                const isHeavy = condition.includes("HEAVY") || condition.includes("STORM") || condition.includes("THUNDERSTORM");
+                const dropCount = isHeavy ? 150 : 60;
+                
+                // 乌云密布
+                for(let i = 0; i < 10; i++) {
+                    const top = -10 + Math.random() * 20;
+                    const scale = 1 + Math.random() * 2;
+                    const delay = Math.random() * -50;
+                    html += `<div class="cloud dark-cloud" style="top:${top}%; left:-30%; width:250px; height:80px; background:rgba(255,255,255,0.6); transform:scale(${scale}); animation: floatSlow 40s linear infinite ${delay}s;"></div>`;
                 }
-                // 雨滴
-                for(let i = 0; i < 80; i++) {
-                    const left = Math.random() * 100;
+                
+                // 雨滴与水花
+                for(let i = 0; i < dropCount; i++) {
+                    const left = Math.random() * 120; // 超出100防止倾斜留白
                     const delay = Math.random() * 2;
-                    const duration = 0.4 + Math.random() * 0.4;
-                    bgLayer.innerHTML += `
-                        <div style="position:absolute; top:-20px; left:${left}%; width:2px; height:20px; background:rgba(255,255,255,0.5); animation: fall ${duration}s linear infinite ${delay}s;"></div>
-                    `;
+                    const duration = isHeavy ? (0.3 + Math.random() * 0.2) : (0.5 + Math.random() * 0.4);
+                    const height = isHeavy ? (30 + Math.random() * 20) : (15 + Math.random() * 10);
+                    const opacity = 0.3 + Math.random() * 0.5;
+                    
+                    html += `<div class="rain-drop" style="top:-50px; left:${left}%; height:${height}px; opacity:${opacity}; animation: rainFall ${duration}s linear infinite ${delay}s;"></div>`;
+                    
+                    // 底部随机水花
+                    if (Math.random() > 0.5) {
+                        const splashLeft = Math.random() * 100;
+                        const splashDelay = Math.random() * 2;
+                        html += `<div class="rain-splash" style="left:${splashLeft}%; width:15px; height:5px; animation-delay:${splashDelay}s;"></div>`;
+                    }
                 }
-                // 雷雨天气触发闪电
+                
+                // 闪电
                 if (condition.includes("THUNDERSTORM") || condition.includes("STORM")) {
-                    lightningLayer.style.animation = "flash 6s infinite";
+                    lightningLayer.style.animation = "intenseFlash 7s infinite";
                 }
             }
             
+            // ========== 4. 雪 ==========
             if (condition.includes("SNOW") || condition.includes("SLEET")) {
-                // 雪天
-                for(let i = 0; i < 60; i++) {
+                const isHeavy = condition.includes("HEAVY");
+                const snowCount = isHeavy ? 150 : 70;
+                
+                for(let i = 0; i < snowCount; i++) {
                     const left = Math.random() * 100;
-                    const delay = Math.random() * 5;
-                    const duration = 3 + Math.random() * 4;
-                    const size = 3 + Math.random() * 4;
-                    bgLayer.innerHTML += `
-                        <div style="position:absolute; top:-20px; left:${left}%; width:${size}px; height:${size}px; background:#ffffff; border-radius:50%; filter:blur(1px); animation: fall ${duration}s linear infinite ${delay}s;"></div>
-                    `;
+                    const delay = Math.random() * -10;
+                    const duration = isHeavy ? (3 + Math.random() * 3) : (5 + Math.random() * 5);
+                    const size = 2 + Math.random() * 6;
+                    const opacity = 0.4 + Math.random() * 0.6;
+                    const blur = Math.random() > 0.6 ? Math.random() * 2 : 0; // 景深效果
+                    
+                    html += `<div class="snowflake" style="left:${left}%; width:${size}px; height:${size}px; opacity:${opacity}; filter:blur(${blur}px); animation: snowFall ${duration}s linear infinite ${delay}s, snowSway ${2+Math.random()*2}s ease-in-out infinite alternate ${delay}s;"></div>`;
                 }
             }
+            
+            // ========== 5. 雾/霾 ==========
+            if (condition.includes("FOG") || condition.includes("HAZE") || condition.includes("DUST")) {
+                const layerCount = 4;
+                const fogColor = condition.includes("DUST") ? "rgba(210,180,140,0.4)" : "rgba(255,255,255,0.3)";
+                for(let i=0; i<layerCount; i++) {
+                    const top = Math.random() * 50;
+                    const delay = Math.random() * -20;
+                    const duration = 20 + Math.random() * 20;
+                    html += `<div class="fog-layer" style="top:${top}%; background:radial-gradient(circle, ${fogColor} 0%, transparent 70%); animation: fogMove ${duration}s linear infinite alternate ${delay}s;"></div>`;
+                }
+            }
+            
+            // ========== 6. 大风 ==========
+            if (condition.includes("WINDY") || condition.includes("DUST")) {
+                // 风痕
+                for(let i=0; i<20; i++) {
+                    const top = Math.random() * 100;
+                    const width = 50 + Math.random() * 150;
+                    const delay = Math.random() * 5;
+                    const duration = 0.5 + Math.random() * 1;
+                    html += `<div class="wind-streak" style="top:${top}%; width:${width}px; animation: windMove ${duration}s linear infinite ${delay}s;"></div>`;
+                }
+                // 吹落的树叶
+                for(let i=0; i<10; i++) {
+                    const top = Math.random() * 50;
+                    const delay = Math.random() * 5;
+                    const duration = 2 + Math.random() * 3;
+                    const spinDuration = 0.5 + Math.random();
+                    html += `<div class="leaf" style="top:${top}%; animation: leafBlow ${duration}s linear infinite ${delay}s, leafSpin ${spinDuration}s linear infinite;"></div>`;
+                }
+            }
+            
+            bgLayer.innerHTML = html;
         }
+
+
 
         // 5. 弹窗控制逻辑
         function openModal() {
