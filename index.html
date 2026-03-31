@@ -650,7 +650,7 @@
     </div>
     
     <!-- 提示框 -->
-    <div class="toast" id="toast">树洞听到啦</div>
+    <div class="toast" id="toast"></div>
 
     <script>
         // WeatherKit 天气现象映射表
@@ -1093,6 +1093,15 @@
 
         // 6. 心事提交与动画
         let isSubmitting = false;
+        const mindReplies = [
+            "风会带走你的烦恼",
+            "风听到啦，它说没关系",
+            "所有的不开心都随风散了",
+            "风已将你的心事妥善安放",
+            "深呼吸，让风拥抱你",
+            "你的心声，风在静静聆听"
+        ];
+
         function submitMind() {
             if (isSubmitting) return;
             const input = document.getElementById('mind-input');
@@ -1104,9 +1113,12 @@
             // 添加飞走动画类
             icon.classList.add('fly');
             
+            // 随机获取一条回复
+            const randomReply = mindReplies[Math.floor(Math.random() * mindReplies.length)];
+            
             // 动画执行结束后处理
             setTimeout(() => {
-                showToast("树洞听到啦");
+                showToast(randomReply);
                 input.value = "";
                 // 移除动画类，恢复原位
                 icon.classList.remove('fly');
