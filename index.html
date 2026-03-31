@@ -1191,7 +1191,7 @@
                         if (!trimmedLine) continue;
                         
                         if (trimmedLine.startsWith('data: ')) {
-                            const dataStr = trimmedLine.replace('data: ', '').trim();
+                            const dataStr = trimmedLine.substring(6).trim(); // 使用 substring(6) 提取 data: 之后的内容
                             if (dataStr === '[DONE]') {
                                 console.log("收到 [DONE] 标记");
                                 continue;
