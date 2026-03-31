@@ -1185,7 +1185,7 @@
                                     throw new Error('API Error');
                                 }
                                 
-                                const content = data.choices?.[0]?.delta?.content;
+                                const content = data.content;
                                 if (content) {
                                     if (isFirstChunk) {
                                         replyContent.innerText = ''; // 清空 loading 提示
@@ -1194,7 +1194,7 @@
                                     replyContent.innerText += content;
                                 }
                             } catch (e) {
-                                console.warn('解析流数据失败:', e);
+                                // 忽略不完整的 JSON 或解析错误
                             }
                         }
                     }
