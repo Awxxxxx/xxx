@@ -85,9 +85,11 @@ app.post('/api/chat', async (req, res) => {
 
     // 设置 SSE 响应头
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-transform, no-cache');
     res.setHeader('Connection', 'keep-alive');
-    
+    res.setHeader('X-Accel-Buffering', 'no'); // 禁用 Nginx 缓存（如果是 Vercel 或 Nginx 代理）
+    res.flushHeaders(); // 立即发送 Header，建立连接
+
     // 如果客户端断开连接，则结束
     req.on('close', () => {
         res.end();
@@ -141,6 +143,10 @@ app.post('/api/chat', async (req, res) => {
                             if (content) {
                                 // 重新打包成简单的格式发送给前端
                                 res.write(`data: ${JSON.stringify({ content })}\n\n`);
+                                // 强制刷新缓冲区
+                                if (res.flush) {
+                                    res.flush();
+                                }
                             }
                         }
                     } catch (e) {
