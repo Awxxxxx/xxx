@@ -129,10 +129,29 @@ app.post('/api/chat', async (req, res) => {
 
         // 处理流式响应
         response.body.on('data', chunk => {
-            res.write(chunk);
+            const text = chunk.toString();
+            const lines = text.split('\n');
+            for (const line of lines) {
+                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                    try {
+                        const dataStr = line.replace('data: ', '').trim();
+                        if (dataStr) {
+                            const data = JSON.parse(dataStr);
+                            const content = data.choices?.[0]?.delta?.content;
+                            if (content) {
+                                // 重新打包成简单的格式发送给前端
+                                res.write(`data: ${JSON.stringify({ content })}\n\n`);
+                            }
+                        }
+                    } catch (e) {
+                        // 忽略解析错误
+                    }
+                }
+            }
         });
 
         response.body.on('end', () => {
+            res.write('event: done\ndata: [DONE]\n\n');
             res.end();
         });
 
