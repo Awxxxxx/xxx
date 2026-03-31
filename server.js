@@ -7,6 +7,9 @@ const app = express();
 // 允许跨域请求
 app.use(cors());
 
+// 解析 JSON body
+app.use(express.json());
+
 // WeatherKit API 配置
 const TEAM_ID = 'WR7885F6JL';
 const SERVICE_ID = 'com.Secretbox.weatherkit-client';
@@ -69,6 +72,75 @@ app.get('/api/weather', async (req, res) => {
     } catch (error) {
         console.error('获取 WeatherKit 数据失败:', error);
         res.status(500).json({ error: '获取天气数据失败' });
+    }
+});
+
+// DeepSeek 聊天 API 路由 (SSE)
+app.post('/api/chat', async (req, res) => {
+    const { message } = req.body;
+
+    if (!message) {
+        return res.status(400).json({ error: '缺少 message 参数' });
+    }
+
+    // 设置 SSE 响应头
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    // 如果客户端断开连接，则结束
+    req.on('close', () => {
+        res.end();
+    });
+
+    try {
+        const fetch = (await import('node-fetch')).default || require('node-fetch');
+        
+        const systemPrompt = `你现在是“树洞天气”APP里一个温暖、有同理心、且像人类好朋友一样的倾听者。 
+用户会在这里分享他们的喜怒哀乐，或者只是随口说一些日常琐事。请你根据用户输入的内容和情绪，给出个性化的回复。 
+请遵循以下原则进行回复： 
+1. 识别情绪并共情： 
+   - 如果用户分享烦恼或难过的事：请给予温柔的安慰和理解，表达“我在这里陪着你”，不要说教，不要给出专业的医疗/心理诊断建议。 
+   - 如果用户分享开心或成就：请真诚地为他们感到高兴，分享他们的喜悦，可以用稍微活泼一点的语气。 
+   - 如果用户分享平淡的日常或无关心情的事：请像老朋友一样自然地搭话、倾听，或者给出简单友善的回应。 
+2. 语气与口吻：使用第一人称“我”，语气要自然、亲切、口语化，就像现实中懂你的好朋友在微信上聊天一样，避免机器感和官方套话。 
+3. 篇幅限制：回复要简短精炼，不要长篇大论，字数尽量控制在 50 到 100 字之间。 
+4. 交互限制：由于你与用户的交互是单次的，所以一定不要用问句结尾。`;
+
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer sk-67137a3b55104238aa30608376b91f4d`
+            },
+            body: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: message }
+                ],
+                stream: true
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`DeepSeek API responded with status ${response.status}`);
+        }
+
+        // 处理流式响应
+        response.body.on('data', chunk => {
+            res.write(chunk);
+        });
+
+        response.body.on('end', () => {
+            res.end();
+        });
+
+    } catch (error) {
+        console.error('DeepSeek API 请求失败:', error);
+        // 如果发生错误，发送一个特殊事件通知前端
+        res.write(`data: ${JSON.stringify({ error: true })}\n\n`);
+        res.end();
     }
 });
 
