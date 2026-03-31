@@ -75,25 +75,13 @@ app.get('/api/weather', async (req, res) => {
     }
 });
 
-// DeepSeek 聊天 API 路由 (SSE)
+// DeepSeek 聊天 API 路由 (标准 JSON 响应，适配 Vercel)
 app.post('/api/chat', async (req, res) => {
     const { message } = req.body;
 
     if (!message) {
         return res.status(400).json({ error: '缺少 message 参数' });
     }
-
-    // 设置 SSE 响应头
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-transform, no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no'); // 禁用 Nginx 缓存（如果是 Vercel 或 Nginx 代理）
-    res.flushHeaders(); // 立即发送 Header，建立连接
-
-    // 如果客户端断开连接，则结束
-    req.on('close', () => {
-        res.end();
-    });
 
     try {
         const fetch = (await import('node-fetch')).default || require('node-fetch');
@@ -109,8 +97,7 @@ app.post('/api/chat', async (req, res) => {
 3. 篇幅限制：回复要简短精炼，不要长篇大论，字数尽量控制在 50 到 100 字之间。 
 4. 交互限制：由于你与用户的交互是单次的，所以一定不要用问句结尾。`;
 
-        // 检查是否在 Vercel Serverless 环境中 (通常没有 res.flush 方法，或者会有特殊的限制)
-        const isVercel = process.env.VERCEL === '1';
+        console.log("正在向 DeepSeek 发起请求 (非流式)...");
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
@@ -124,8 +111,7 @@ app.post('/api/chat', async (req, res) => {
                     { role: "system", content: systemPrompt },
                     { role: "user", content: message }
                 ],
-                // 如果在 Vercel 环境下，为了稳定暂时关闭流式请求；如果本地开发则保持流式
-                stream: !isVercel
+                stream: false // 彻底关闭流式，使用最稳定的普通请求
             })
         });
 
@@ -135,51 +121,17 @@ app.post('/api/chat', async (req, res) => {
             throw new Error(`DeepSeek API responded with status ${response.status}`);
         }
 
-        console.log("DeepSeek API 连接成功，Vercel环境:", isVercel);
-
-        if (isVercel) {
-            // 非流式处理 (Vercel Serverless 环境)
-            const data = await response.json();
-            const content = data.choices?.[0]?.message?.content || "";
-            // 模拟流式格式发送给前端
-            res.write(`data: ${JSON.stringify({ content })}\n\n`);
-            res.write('event: done\ndata: [DONE]\n\n');
-            res.end();
-        } else {
-            // 流式处理 (本地或支持流的环境)
-            response.body.on('data', chunk => {
-                const text = chunk.toString();
-                const lines = text.split('\n');
-                for (const line of lines) {
-                    if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                        try {
-                            const dataStr = line.replace('data: ', '').trim();
-                            if (dataStr) {
-                                const data = JSON.parse(dataStr);
-                                const content = data.choices?.[0]?.delta?.content;
-                                if (content) {
-                                    res.write(`data: ${JSON.stringify({ content })}\n\n`);
-                                    if (res.flush) res.flush();
-                                }
-                            }
-                        } catch (e) {
-                            // 忽略解析错误
-                        }
-                    }
-                }
-            });
-
-            response.body.on('end', () => {
-                console.log("DeepSeek API 流结束");
-                res.write('event: done\ndata: [DONE]\n\n');
-                res.end();
-            });
-        }
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "";
+        
+        console.log("成功获取到 DeepSeek 回复，返回给前端。");
+        
+        // 直接返回标准 JSON 给前端
+        res.json({ content });
 
     } catch (error) {
-        console.error('DeepSeek API 请求失败:', error);
-        res.write(`data: ${JSON.stringify({ error: true })}\n\n`);
-        res.end();
+        console.error('获取 DeepSeek 回复失败:', error);
+        res.status(500).json({ error: '树洞暂时睡着了' });
     }
 });
 
