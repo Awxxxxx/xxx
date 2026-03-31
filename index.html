@@ -1155,7 +1155,8 @@
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Accept': 'text/event-stream' // 明确告诉后端和代理我们需要 SSE 格式
                     },
                     body: JSON.stringify({ message })
                 });
