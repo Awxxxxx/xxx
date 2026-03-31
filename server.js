@@ -109,6 +109,9 @@ app.post('/api/chat', async (req, res) => {
 3. 篇幅限制：回复要简短精炼，不要长篇大论，字数尽量控制在 50 到 100 字之间。 
 4. 交互限制：由于你与用户的交互是单次的，所以一定不要用问句结尾。`;
 
+        // 检查是否在 Vercel Serverless 环境中 (通常没有 res.flush 方法，或者会有特殊的限制)
+        const isVercel = process.env.VERCEL === '1';
+
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -121,49 +124,60 @@ app.post('/api/chat', async (req, res) => {
                     { role: "system", content: systemPrompt },
                     { role: "user", content: message }
                 ],
-                stream: true
+                // 如果在 Vercel 环境下，为了稳定暂时关闭流式请求；如果本地开发则保持流式
+                stream: !isVercel
             })
         });
 
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('DeepSeek API Error Body:', errorText);
             throw new Error(`DeepSeek API responded with status ${response.status}`);
         }
 
-        // 处理流式响应
-        response.body.on('data', chunk => {
-            const text = chunk.toString();
-            const lines = text.split('\n');
-            for (const line of lines) {
-                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                    try {
-                        const dataStr = line.replace('data: ', '').trim();
-                        if (dataStr) {
-                            const data = JSON.parse(dataStr);
-                            const content = data.choices?.[0]?.delta?.content;
-                            if (content) {
-                                // 重新打包成简单的格式发送给前端
-                                res.write(`data: ${JSON.stringify({ content })}\n\n`);
-                                // 强制刷新缓冲区
-                                if (res.flush) {
-                                    res.flush();
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        // 忽略解析错误
-                    }
-                }
-            }
-        });
+        console.log("DeepSeek API 连接成功，Vercel环境:", isVercel);
 
-        response.body.on('end', () => {
+        if (isVercel) {
+            // 非流式处理 (Vercel Serverless 环境)
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content || "";
+            // 模拟流式格式发送给前端
+            res.write(`data: ${JSON.stringify({ content })}\n\n`);
             res.write('event: done\ndata: [DONE]\n\n');
             res.end();
-        });
+        } else {
+            // 流式处理 (本地或支持流的环境)
+            response.body.on('data', chunk => {
+                const text = chunk.toString();
+                const lines = text.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                        try {
+                            const dataStr = line.replace('data: ', '').trim();
+                            if (dataStr) {
+                                const data = JSON.parse(dataStr);
+                                const content = data.choices?.[0]?.delta?.content;
+                                if (content) {
+                                    res.write(`data: ${JSON.stringify({ content })}\n\n`);
+                                    if (res.flush) res.flush();
+                                }
+                            }
+                        } catch (e) {
+                            // 忽略解析错误
+                        }
+                    }
+                }
+            });
+
+            response.body.on('end', () => {
+                console.log("DeepSeek API 流结束");
+                res.write('event: done\ndata: [DONE]\n\n');
+                res.end();
+            });
+        }
 
     } catch (error) {
         console.error('DeepSeek API 请求失败:', error);
-        // 如果发生错误，发送一个特殊事件通知前端
         res.write(`data: ${JSON.stringify({ error: true })}\n\n`);
         res.end();
     }
