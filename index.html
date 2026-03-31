@@ -1150,80 +1150,28 @@
                     apiUrl = `http://localhost:3000/api/chat`;
                 }
 
-                console.log("准备发送请求到:", apiUrl, "内容:", message);
-
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'text/event-stream' // 明确告诉后端和代理我们需要 SSE 格式
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ message })
                 });
-
-                console.log("收到响应状态:", response.status);
 
                 if (!response.ok) {
                     throw new Error(`网络请求失败: ${response.status}`);
                 }
 
-                // 处理 SSE 流式响应
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder('utf-8');
-                let isFirstChunk = true;
-                let buffer = '';
-                let hasReceivedValidData = false;
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) {
-                        console.log("读取流结束");
-                        break;
-                    }
-                    
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    
-                    // 保留最后一行，因为它可能是不完整的（没有 \n 结尾）
-                    buffer = lines.pop() || '';
-                    
-                    for (const line of lines) {
-                        const trimmedLine = line.trim();
-                        if (!trimmedLine) continue;
-                        
-                        if (trimmedLine.startsWith('data: ')) {
-                            const dataStr = trimmedLine.substring(6).trim(); // 使用 substring(6) 提取 data: 之后的内容
-                            if (dataStr === '[DONE]') {
-                                console.log("收到 [DONE] 标记");
-                                continue;
-                            }
-                            
-                            try {
-                                const data = JSON.parse(dataStr);
-                                if (data.error) {
-                                    throw new Error('API 返回了 error 标记');
-                                }
-                                
-                                const content = data.content;
-                                if (content) {
-                                    hasReceivedValidData = true;
-                                    if (isFirstChunk) {
-                                        replyContent.innerText = ''; // 清空 loading 提示
-                                        isFirstChunk = false;
-                                    }
-                                    replyContent.innerText += content;
-                                }
-                            } catch (e) {
-                                // 忽略不完整的 JSON 或解析错误
-                                console.warn('解析流数据失败:', dataStr, e);
-                            }
-                        }
-                    }
+                // 放弃流式解析，直接获取完整的 JSON 响应
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
                 }
                 
-                // 如果直到结束都没有收到有效数据，并且还是 loading 状态
-                if (!hasReceivedValidData) {
-                    console.error('流结束，但未收到任何有效的内容数据');
+                if (data.content) {
+                    replyContent.innerText = data.content;
+                } else {
                     throw new Error('未收到有效回复');
                 }
 
