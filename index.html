@@ -381,15 +381,16 @@
             background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(8px);
             z-index: 100;
-            display: none;
+            display: flex;
             justify-content: center;
             align-items: center;
             opacity: 0;
-            transition: opacity 0.3s ease;
+            visibility: hidden; /* 替代 display: none */
+            transition: opacity 0.3s ease, visibility 0.3s ease;
         }
         .modal.show {
-            display: flex;
             opacity: 1;
+            visibility: visible;
         }
         .modal-content {
             background: rgba(255, 255, 255, 0.15);
