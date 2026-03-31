@@ -361,6 +361,16 @@
             opacity: 0.5;
             padding-bottom: 10px;
             letter-spacing: 1px;
+            z-index: 100;
+        }
+        .footer a {
+            color: #ffffff;
+            text-decoration: none;
+            margin-left: 5px;
+            transition: opacity 0.3s;
+        }
+        .footer a:hover {
+            text-decoration: underline;
         }
 
         /* ================= Components ================= */
@@ -613,9 +623,9 @@
         </div>
         
         <div class="mind-hole">
-            <div class="mind-title">今日心事</div>
+            <div class="mind-title">心情树洞</div>
             <div class="input-group">
-                <input type="text" id="mind-input" placeholder="把心事说给树洞，安全不留痕" autocomplete="off">
+                <input type="text" id="mind-input" placeholder="把心事说给风听，安全不留痕" autocomplete="off">
                 <button class="submit-btn" onclick="submitMind()" aria-label="发送">
                     <svg id="plane-icon" viewBox="0 0 24 24">
                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
@@ -624,7 +634,7 @@
             </div>
         </div>
         
-        <div class="footer">@树洞天气 2026 Developed by XU PENGYUAN</div>
+        <div class="footer">@树洞天气 2026 Developed by XU PENGYUAN | <a href="/privacy.html" target="_blank">隐私政策</a></div>
     </div>
     
     <!-- 未来天气弹窗 -->
