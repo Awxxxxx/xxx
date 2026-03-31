@@ -640,11 +640,22 @@
     <!-- 未来天气弹窗 -->
     <div class="modal" id="forecast-modal">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <span class="close-btn" onclick="closeModal('forecast-modal')">&times;</span>
             <div class="modal-title">未来三天天气</div>
             <div id="forecast-list">
                 <!-- 预报数据将通过 JS 动态注入 -->
                 <div style="text-align: center; padding: 20px; opacity: 0.7;">加载中...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 来自风的回复弹窗 -->
+    <div class="modal" id="reply-modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('reply-modal')">&times;</span>
+            <div class="modal-title">来自风的回复</div>
+            <div id="reply-content" style="min-height: 80px; line-height: 1.6; font-size: 1.05rem; white-space: pre-wrap; word-wrap: break-word;">
+                风正在感应你的心声...
             </div>
         </div>
     </div>
@@ -1077,32 +1088,27 @@
 
 
         // 5. 弹窗控制逻辑
-        function openModal() {
-            document.getElementById('forecast-modal').classList.add('show');
+        function openModal(id = 'forecast-modal') {
+            document.getElementById(id).classList.add('show');
         }
-        function closeModal() {
-            document.getElementById('forecast-modal').classList.remove('show');
+        function closeModal(id = 'forecast-modal') {
+            document.getElementById(id).classList.remove('show');
         }
         // 点击弹窗外部关闭
         window.onclick = function(event) {
-            const modal = document.getElementById('forecast-modal');
-            if (event.target == modal) {
-                closeModal();
+            const forecastModal = document.getElementById('forecast-modal');
+            const replyModal = document.getElementById('reply-modal');
+            if (event.target == forecastModal) {
+                closeModal('forecast-modal');
+            } else if (event.target == replyModal) {
+                closeModal('reply-modal');
             }
         }
 
         // 6. 心事提交与动画
         let isSubmitting = false;
-        const mindReplies = [
-            "风会带走你的烦恼",
-            "风听到啦，它说没关系",
-            "所有的不开心都随风散了",
-            "风已将你的心事妥善安放",
-            "深呼吸，让风拥抱你",
-            "你的心声，风在静静聆听"
-        ];
 
-        function submitMind() {
+        async function submitMind() {
             if (isSubmitting) return;
             const input = document.getElementById('mind-input');
             const text = input.value.trim();
@@ -1113,17 +1119,96 @@
             // 添加飞走动画类
             icon.classList.add('fly');
             
-            // 随机获取一条回复
-            const randomReply = mindReplies[Math.floor(Math.random() * mindReplies.length)];
-            
             // 动画执行结束后处理
             setTimeout(() => {
-                showToast(randomReply);
                 input.value = "";
                 // 移除动画类，恢复原位
                 icon.classList.remove('fly');
                 isSubmitting = false;
+                
+                // 打开回复弹窗
+                const replyContent = document.getElementById('reply-content');
+                replyContent.innerText = "风正在感应你的心声...";
+                openModal('reply-modal');
+                
+                // 发起 SSE 请求
+                fetchReplyFromDeepSeek(text);
             }, 1000);
+        }
+
+        async function fetchReplyFromDeepSeek(message) {
+            const replyContent = document.getElementById('reply-content');
+            
+            try {
+                // 判断环境以使用正确的 API 地址
+                const isAppEnv = window.location.protocol === 'capacitor:' || window.location.protocol === 'file:';
+                const baseUrl = isAppEnv ? 'https://www.xxxxxxx.tw' : '';
+                let apiUrl = `${baseUrl}/api/chat`;
+                
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                if (isLocalhost && window.location.port !== '3000' && !isAppEnv) {
+                    apiUrl = `http://localhost:3000/api/chat`;
+                }
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                if (!response.ok) {
+                    throw new Error('网络请求失败');
+                }
+
+                // 处理 SSE 流式响应
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let isFirstChunk = true;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.replace('data: ', '').trim();
+                            if (dataStr === '[DONE]') continue;
+                            
+                            try {
+                                const data = JSON.parse(dataStr);
+                                if (data.error) {
+                                    throw new Error('API Error');
+                                }
+                                
+                                const content = data.choices?.[0]?.delta?.content;
+                                if (content) {
+                                    if (isFirstChunk) {
+                                        replyContent.innerText = ''; // 清空 loading 提示
+                                        isFirstChunk = false;
+                                    }
+                                    replyContent.innerText += content;
+                                }
+                            } catch (e) {
+                                console.warn('解析流数据失败:', e);
+                            }
+                        }
+                    }
+                }
+                
+                // 如果直到结束都没有收到有效数据，并且还是 loading 状态
+                if (isFirstChunk) {
+                    throw new Error('未收到有效回复');
+                }
+
+            } catch (error) {
+                console.error('获取回复失败:', error);
+                replyContent.innerText = "树洞暂时睡着了，请稍后再试哦。";
+            }
         }
         
         // 展现 Toast 提示
