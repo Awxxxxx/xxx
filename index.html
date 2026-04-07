@@ -192,11 +192,17 @@
             backdrop-filter: blur(3px); /* 轻微模糊增强玻璃质感 */
         }
 
-        /* 右上角入口 */
-        .future-btn {
+        /* 右上角入口组 */
+        .top-right-actions {
             position: absolute;
             top: 30px;
             right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .future-btn, .app-download-btn {
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.4);
             padding: 10px 20px;
@@ -207,10 +213,59 @@
             font-size: 1rem;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            font-family: inherit;
         }
-        .future-btn:hover {
+        
+        .future-btn:hover, .app-download-btn:hover {
             background: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
+        }
+
+        .app-download-wrapper {
+            position: relative;
+        }
+
+        .qr-popup {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            transform: translateY(-10px);
+            color: #333;
+            min-width: 150px;
+        }
+
+        .app-download-wrapper:hover .qr-popup {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .qr-popup img {
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: #eee;
+            object-fit: cover;
+        }
+
+        .qr-popup p {
+            font-size: 0.75rem;
+            text-align: center;
+            margin: 0;
+            color: #666;
+            line-height: 1.4;
         }
 
         /* 天气信息展示区 */
@@ -559,9 +614,14 @@
                 flex: 0 0 45%; /* 手机端每行两个 */
                 margin-bottom: 5px;
             }
-            .future-btn {
+            .top-right-actions {
                 top: 20px;
                 right: 20px;
+            }
+            .app-download-wrapper {
+                display: none;
+            }
+            .future-btn {
                 font-size: 0.9rem;
                 padding: 8px 16px;
             }
@@ -585,7 +645,17 @@
 
     <!-- 主体内容 -->
     <div id="app">
-        <button class="future-btn" onclick="openModal()">未来天气</button>
+        <div class="top-right-actions">
+            <button class="future-btn" onclick="openModal()">未来天气</button>
+            <div class="app-download-wrapper">
+                <button class="app-download-btn">APP下载</button>
+                <div class="qr-popup">
+                    <!-- 二维码占位图 -->
+                    <img src="https://www.xxxxxxx.tw/QRcode.png" alt="APP下载二维码">
+                    <p>仅支持ios设备，其他平台敬请期待</p>
+                </div>
+            </div>
+        </div>
         
         <div class="location">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
